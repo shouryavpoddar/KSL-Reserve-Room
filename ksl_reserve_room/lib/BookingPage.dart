@@ -221,7 +221,9 @@ class _Display extends State<BookingPage>{
           onChanged: (String? newValue) {
             setState(() {
               dropdownValue = newValue!;
-              changeButtonStatus(isSelected.indexOf(true));
+              if(isSelected.contains(true)){
+                changeButtonStatus((isSelected.indexOf(true)));
+              }
             });
           },
         ),
