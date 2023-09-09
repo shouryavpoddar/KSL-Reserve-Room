@@ -76,7 +76,7 @@ List<List<String>> parseInputString(String input) {
   return dataList;
 }
 
-late MultiKeyMap map;
+late Future<MultiKeyMap>? map;
 
 class Display extends State<HomePage>{
 
@@ -87,9 +87,8 @@ class Display extends State<HomePage>{
   }
 
   Future<void> initMap() async {
-    map = await getData();
-    print(map.getValue("Room 301- B", "10:00am"));
-    print(map._data.keys);
+    map = getData();
+    map!.then((value) => print(value._data.keys));
   }
 
   @override
@@ -101,7 +100,7 @@ class Display extends State<HomePage>{
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Sign In by clinking",
+        const Text("Sign In by clinking",
         style: TextStyle(
           color: Colors.white,
           fontFamily: "Lato",
@@ -112,7 +111,7 @@ class Display extends State<HomePage>{
               context,
               MaterialPageRoute(builder: (context) => SignInPage())
           );
-        }, child: Text("here",
+        }, child: const Text("here",
         style: TextStyle(
           fontFamily: "Lato",
             fontSize: 20

@@ -15,6 +15,8 @@ class RoomPage extends StatefulWidget{
 
 class Display extends State<RoomPage>{
 
+ List<String> roomNames = ["Room 301- B","Room 301- C","Room 301- D", "Room 301- E","Room 301- F","Room LL- 02","Room LL- 03","Room LL- 04","Room LL- 05","Room M-01","Room M-02","Room M-03"];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,8 +45,8 @@ class Display extends State<RoomPage>{
   Widget getScaffold(){
     return Scaffold(
       body: ListView(
-      children: List.generate(8,(index){
-        String roomName = map.getRoomKeys()[index];
+      children: List.generate(12,(index){
+        String roomName = roomNames[index];
         return Padding(
           padding: const EdgeInsets.all(2.0),
           child: InkWell(
