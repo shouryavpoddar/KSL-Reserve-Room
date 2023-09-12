@@ -83,7 +83,6 @@ class Display extends State<HomePage>{
   @override
   void initState()  {
     super.initState();
-    initMap();
   }
 
   Future<void> initMap() async {
@@ -93,6 +92,7 @@ class Display extends State<HomePage>{
 
   @override
   Widget build(BuildContext context) {
+    initMap();
     return getScaffold();
   }
 
@@ -158,7 +158,7 @@ class Display extends State<HomePage>{
                   ),
                 ),
               ),
-              getSignIn()
+              // getSignIn()
             ],
           ),
         ],

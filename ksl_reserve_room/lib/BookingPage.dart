@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:math';
-
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:ksl_reserve_room/HomePage.dart';
+import 'package:ksl_reserve_room/LoadingPage.dart';
+import 'package:ksl_reserve_room/RoomPage.dart';
 
 class BookingPage extends StatefulWidget{
 
@@ -18,17 +21,51 @@ class BookingPage extends StatefulWidget{
 
 }
 
+Future<void> bookRoom(String firstName, String lastName, String caseId, String duration, String room, String time) async {
+  final Map<String, dynamic> requestBody = {
+    "first_name": firstName,
+    "last_name": lastName,
+    "email": "${caseId}@case.edu",
+    "room": room,
+    "time": time,
+    "duration": duration
+  };
+
+  final String jsonBody = jsonEncode(requestBody);
+
+  try {
+    await http.post(
+      Uri.parse("http://127.0.0.1:5002/book_room"),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonBody,
+    );
+  } catch (e) {
+    print('Error: $e');
+    throw e;
+  }
+}
+
 String? dropdownValue;
 
 class _Display extends State<BookingPage>{
 
   List<String> dropDownOptions= <String>['30 min', '1 hour', '1.5 hours', '2 hours', "2.5 hours", "3 hours"];
 
-  late List<bool> isSelected;
+  List<bool>? isSelected;
 
-  late List<Widget> children;
+  List<Widget>? children;
 
   late String roomName;
+
+  String _firstName = '';
+
+  String _lastName = '';
+
+  String _caseId = '';
+
+  final _formKey = GlobalKey<FormState>();
 
   List<String> waitingJokes = [
     "Did you know Craigslist’s founder is a Case Western alumni? Craig Newmark graduated with a bachelor of science degree in 1975.",
@@ -46,7 +83,7 @@ class _Display extends State<BookingPage>{
   }
 
   void initChildern(MultiKeyMap map) {
-    children = List.generate(map.getTimeKey()!.length, (index){
+    children ??= List.generate(map.getTimeKey()!.length, (index){
       return Container(
         height: 75,
         width: 300,
@@ -72,7 +109,7 @@ class _Display extends State<BookingPage>{
   }
 
   void initIsSelected(MultiKeyMap map){
-    isSelected = List.generate(map.getTimeKey()!.length, (index){
+    isSelected ??= List.generate(map.getTimeKey()!.length, (index){
       return false;
     });
   }
@@ -83,7 +120,7 @@ class _Display extends State<BookingPage>{
       selectedColor: Colors.amber,
       selectedBorderColor: Colors.blueGrey,
       fillColor: Colors.blueGrey,
-      isSelected: isSelected,
+      isSelected: isSelected!,
       color: Colors.white,
       onPressed: (int index) {
         setState(() {
@@ -96,15 +133,15 @@ class _Display extends State<BookingPage>{
           minHeight: 90,
           minWidth: 200
       ),
-      children: children,
+      children: children!,
     );
   }
 
   void changeButtonStatus(int index, MultiKeyMap map){
-    for (int buttonIndex = 0; buttonIndex < isSelected.length; buttonIndex++) {
+    for (int buttonIndex = 0; buttonIndex < isSelected!.length; buttonIndex++) {
       if (buttonIndex >= index && buttonIndex <= index +dropdownValueIndex() && map.getValue(roomName, map.getTimeKey()![buttonIndex])  != "Unavailable") {
-        isSelected[buttonIndex] = true;
-        children[buttonIndex] = Container(
+        isSelected![buttonIndex] = true;
+        children![buttonIndex] = Container(
           height: 75,
           width: 300,
           color: Colors.amber,
@@ -118,8 +155,8 @@ class _Display extends State<BookingPage>{
           ),
         );
       } else if(map.getValue(roomName, map.getTimeKey()![buttonIndex])  != "Unavailable") {
-        isSelected[buttonIndex] = false;
-        children[buttonIndex] = Container(
+        isSelected![buttonIndex] = false;
+        children![buttonIndex] = Container(
           height: 75,
           width: 300,
           color: const Color(0xff0b37b0),
@@ -171,7 +208,7 @@ class _Display extends State<BookingPage>{
             ),
           ),
         ),
-        SizedBox(width: 350, height: 60 ,child: ElevatedButton(onPressed: (){print("Submited");}, child: Text("Submit", style: TextStyle(fontFamily: "Lato"),), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF08016e)),))
+        SizedBox(width: 350, height: 60 ,child: ElevatedButton(onPressed: (){submitBooking(context, map);}, child: Text("Submit", style: TextStyle(fontFamily: "Lato"),), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF08016e)),))
         ],
       ),
       backgroundColor: Colors.blueGrey,
@@ -213,7 +250,7 @@ class _Display extends State<BookingPage>{
 
   List<String> getDropDownOptions(MultiKeyMap map){
     int count = 0;
-    for(int index = isSelected.indexOf(true); (index> -1 && index < isSelected.length) && map.getValue(roomName,map.getTimeKey()![index])  != "Unavailable"; index++){
+    for(int index = isSelected!.indexOf(true); (index> -1 && index < isSelected!.length) && map.getValue(roomName,map.getTimeKey()![index])  != "Unavailable"; index++){
       count++;
     }
     if(count >= 6 || count == 0){
@@ -248,8 +285,8 @@ class _Display extends State<BookingPage>{
           onChanged: (String? newValue) {
             setState(() {
               dropdownValue = newValue!;
-              if(isSelected.contains(true)){
-                changeButtonStatus((isSelected.indexOf(true)), map);
+              if(isSelected!.contains(true)){
+                changeButtonStatus((isSelected!.indexOf(true)), map);
               }
             });
           },
@@ -279,7 +316,7 @@ class _Display extends State<BookingPage>{
           onChanged: (String? newValue) {
             setState(() {
               dropdownValue = newValue!;
-              changeButtonStatus(isSelected.indexOf(true), map);
+              changeButtonStatus(isSelected!.indexOf(true), map);
             });
           },
         ),
@@ -292,33 +329,7 @@ class _Display extends State<BookingPage>{
       future: map,
       builder: (BuildContext context, AsyncSnapshot<MultiKeyMap> map) {
         if (map.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-              body: DecoratedBox(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(image: AssetImage("assets/images/Display.jpeg"), fit: BoxFit.cover),
-                  ),
-                  child: Center(
-                    child: Dialog(
-                      child: SizedBox(
-                        height: 170,
-                        width: 30,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              CircularProgressIndicator(),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(waitingJokes[Random().nextInt(waitingJokes.length)], textAlign: TextAlign.center,),
-                              )
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              )
-            ); // Show a loading indicator
+          return LoadingPage(); // Show a loading indicator
         } else if (map.hasError) {
           return Text('Error: ${map.error}');
         } else {
@@ -326,6 +337,140 @@ class _Display extends State<BookingPage>{
           return getScaffold(map.data!);
         }
       },
+    );
+  }
+
+  Widget getLoadingPage(){
+    return Scaffold(
+        body: DecoratedBox(
+          decoration: BoxDecoration(
+            image: DecorationImage(image: AssetImage("assets/images/Display.jpeg"), fit: BoxFit.cover),
+          ),
+          child: Center(
+            child: Dialog(
+              child: SizedBox(
+                height: 170,
+                width: 30,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      CircularProgressIndicator(),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(waitingJokes[Random().nextInt(waitingJokes.length)], textAlign: TextAlign.center,),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        )
+    );
+  }
+
+  void submitBooking(BuildContext context, MultiKeyMap map){
+    showDialog(
+        context: context,
+        builder: (context){
+      return SizedBox(
+        height: 200,
+        width: 300,
+        child: Dialog(
+          child: SizedBox(
+            height: 300,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 240,
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Enter your First name',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your First name';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _firstName = value;
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 250,
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Enter your Last name',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _lastName = value;
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 250,
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Enter your Case Id',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Case Id';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _caseId = value;
+                        });
+                      },
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) {
+                        Navigator.pop(context);
+                        reloadData(map);
+                        print("ok");
+                      }
+                    },
+                    child: const Text('Book'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> reloadData(MultiKeyMap lap) async {
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => LoadingPage())
+    );
+    await bookRoom(_firstName, _lastName, _caseId, "${dropdownValueIndex()}", roomName, lap.getTimeKey()![isSelected!.indexOf(true)]);
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage())
     );
   }
 
