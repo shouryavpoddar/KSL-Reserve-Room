@@ -3,6 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Preference{
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
+  Future<bool> hasLogedIn()async {
+    SharedPreferences preferences = await _prefs;
+    return ((preferences.getString("caseId") != null)&&(preferences.getString("firstName") != null)&&(preferences.getString("lastName") != null));
+  }
+
   Future<void> saveFirstName(String firstName) async{
     SharedPreferences preferences = await _prefs;
     preferences.setString("firstName", firstName);
@@ -31,5 +36,20 @@ class Preference{
   Future<String?> getCaseId() async{
     SharedPreferences preferences = await _prefs;
     return preferences.getString("caseId");
+  }
+
+  Future<void> deleteCaseId() async{
+    SharedPreferences preferences = await _prefs;
+    preferences.remove("caseId");
+  }
+
+  Future<void> deleteFirstName() async{
+    SharedPreferences preferences = await _prefs;
+    preferences.remove("firstName");
+  }
+
+  Future<void> deleteLastName() async{
+    SharedPreferences preferences = await _prefs;
+    preferences.remove("lastName");
   }
 }

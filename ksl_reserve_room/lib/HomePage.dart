@@ -24,8 +24,8 @@ class MultiKeyMap {
     _data[key1]?[key2] = value;
   }
 
-  List<String>? getTimeKey(){
-    return _data[_data.keys.toList()[0]]?.keys.toList();
+  List<String>? getTimeKey(int roomIndex){
+    return _data[_data.keys.toList()[roomIndex]]?.keys.toList();
   }
 
   String? getValue(String key1, String key2) {
@@ -38,10 +38,19 @@ class MultiKeyMap {
 
 MultiKeyMap dic = MultiKeyMap();
 
+Future<MultiKeyMap>? _loadingDataFuture;
+
 Future<MultiKeyMap> getData() async {
-  var data =  await http.get(
-      Uri.parse("http://127.0.0.1:5002/getData")
-  );
+  if (_loadingDataFuture != null) {
+    return _loadingDataFuture!;
+  }
+
+  _loadingDataFuture = _getData();
+  return _loadingDataFuture!;
+}
+
+Future<MultiKeyMap> _getData() async {
+  var data = await http.get(Uri.parse("http://127.0.0.1:5002/getData"));
   String inputString = data.body;
   MultiKeyMap map = MultiKeyMap();
   List<List<String>> dataList = parseInputString(inputString);
@@ -51,7 +60,9 @@ Future<MultiKeyMap> getData() async {
       map.addValue(data[0], data[1], data[2]);
     }
   }
-  // Test retrieving values
+
+  _loadingDataFuture = null; // Reset when the request is completed.
+
   return map;
 }
 

@@ -21,7 +21,7 @@ class BookingPage extends StatefulWidget{
 
 }
 
-Future<void> bookRoom(String firstName, String lastName, String caseId, String duration, String room, String time) async {
+Future<String> bookRoom(String firstName, String lastName, String caseId, String duration, String room, String time) async {
   final Map<String, dynamic> requestBody = {
     "first_name": firstName,
     "last_name": lastName,
@@ -32,20 +32,26 @@ Future<void> bookRoom(String firstName, String lastName, String caseId, String d
   };
 
   final String jsonBody = jsonEncode(requestBody);
+  var message =  await http.post(
+    Uri.parse("http://127.0.0.1:5002/book_room"),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonBody,
+  );
+  RegExp regex = RegExp(r'"([^"]+)"\s*:\s*"([^"]+)"');
 
-  try {
-    await http.post(
-      Uri.parse("http://127.0.0.1:5002/book_room"),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonBody,
-    );
-  } catch (e) {
-    print('Error: $e');
-    throw e;
+  // Use firstMatch to find the first occurrence in the string
+  RegExpMatch match = regex.firstMatch(message.body)!;
+
+  if (match != null) {
+    String key = match.group(1)!;
+    String value = match.group(2)!;
+    return ("$key: $value");
   }
+  return message.body;
 }
+// 1 = love
 
 String? dropdownValue;
 
@@ -70,11 +76,11 @@ class _Display extends State<BookingPage>{
   List<String> waitingJokes = [
     "Did you know Craigslist’s founder is a Case Western alumni? Craig Newmark graduated with a bachelor of science degree in 1975.",
     "Edward Morley determined the atomic weight of oxygen in a laboratory at Case Western Reserve University",
-  "The infamous 2020 Presidential debate between then President Donald J.Trump and then Senator Joe R.Biden was held at the Severance Hall.",
-  "Case Western’s Adelbert Gymnasium was built between 1918 and 1919. It was originally built to be used as an armory for WWI, but the war ended before it was even finished",
-  "The Hudson Relay is a celebrated university event. Starting in 1910, the Hudson Relay has been run every year with a few exceptions. Teams are divided up into graduating classes, and team sizes can vary from 24 to 52.",
-  "CWRU's last Nobel laureate was Richard Thaler in 2017 for his work in Behavorial ECON",
-  "Can you imagine what your life would be like without Gmail? Thank Paul Buccheit, the creator and lead developer of Gmail, who is also a CWRU alumni! (Bonus fun fact: He rowed crew at college!)"
+    "The infamous 2020 Presidential debate between then President Donald J.Trump and then Senator Joe R.Biden was held at the Severance Hall.",
+    "Case Western’s Adelbert Gymnasium was built between 1918 and 1919. It was originally built to be used as an armory for WWI, but the war ended before it was even finished",
+    "The Hudson Relay is a celebrated university event. Starting in 1910, the Hudson Relay has been run every year with a few exceptions. Teams are divided up into graduating classes, and team sizes can vary from 24 to 52.",
+    "CWRU's last Nobel laureate was Richard Thaler in 2017 for his work in Behavorial ECON",
+    "Can you imagine what your life would be like without Gmail? Thank Paul Buccheit, the creator and lead developer of Gmail, who is also a CWRU alumni! (Bonus fun fact: He rowed crew at college!)"
   ];
 
   _Display(String name){
@@ -83,13 +89,13 @@ class _Display extends State<BookingPage>{
   }
 
   void initChildern(MultiKeyMap map) {
-    children ??= List.generate(map.getTimeKey()!.length, (index){
+    children ??= List.generate(map.getTimeKey(map.getRoomKeys().indexOf(roomName))!.length, (index){
       return Container(
         height: 75,
         width: 300,
-        color: (map.getValue(roomName, map.getTimeKey()![index])  != "Unavailable")? const Color(0xff0b37b0): Colors.red ,
+        color: (map.getValue(roomName, map.getTimeKey(map.getRoomKeys().indexOf(roomName))![index])  != "Unavailable")? const Color(0xff0b37b0): Colors.red ,
         child: Center(
-          child: Text(map.getTimeKey()![index], style: const TextStyle(
+          child: Text(map.getTimeKey(map.getRoomKeys().indexOf(roomName))![index], style: const TextStyle(
               fontFamily: "Lato",
               fontSize: 20
           ),
@@ -109,7 +115,7 @@ class _Display extends State<BookingPage>{
   }
 
   void initIsSelected(MultiKeyMap map){
-    isSelected ??= List.generate(map.getTimeKey()!.length, (index){
+    isSelected ??= List.generate(map.getTimeKey(map.getRoomKeys().indexOf(roomName))!.length, (index){
       return false;
     });
   }
@@ -139,14 +145,14 @@ class _Display extends State<BookingPage>{
 
   void changeButtonStatus(int index, MultiKeyMap map){
     for (int buttonIndex = 0; buttonIndex < isSelected!.length; buttonIndex++) {
-      if (buttonIndex >= index && buttonIndex <= index +dropdownValueIndex() && map.getValue(roomName, map.getTimeKey()![buttonIndex])  != "Unavailable") {
+      if (buttonIndex >= index && buttonIndex <= index +dropdownValueIndex() && map.getValue(roomName, map.getTimeKey(map.getRoomKeys().indexOf(roomName))![buttonIndex])  != "Unavailable") {
         isSelected![buttonIndex] = true;
         children![buttonIndex] = Container(
           height: 75,
           width: 300,
           color: Colors.amber,
           child: Center(
-            child: Text(map.getTimeKey()![buttonIndex], style: const TextStyle(
+            child: Text(map.getTimeKey(map.getRoomKeys().indexOf(roomName))![buttonIndex], style: const TextStyle(
                 fontFamily: "Lato",
                 fontSize: 20,
                 color: Colors.black
@@ -154,14 +160,14 @@ class _Display extends State<BookingPage>{
             ),
           ),
         );
-      } else if(map.getValue(roomName, map.getTimeKey()![buttonIndex])  != "Unavailable") {
+      } else if(map.getValue(roomName, map.getTimeKey(map.getRoomKeys().indexOf(roomName))![buttonIndex])  != "Unavailable") {
         isSelected![buttonIndex] = false;
         children![buttonIndex] = Container(
           height: 75,
           width: 300,
           color: const Color(0xff0b37b0),
           child: Center(
-            child: Text(map.getTimeKey()![buttonIndex], style: const TextStyle(
+            child: Text(map.getTimeKey(map.getRoomKeys().indexOf(roomName))![buttonIndex], style: const TextStyle(
                 fontFamily: "Lato",
                 fontSize: 20
             ),
@@ -175,44 +181,44 @@ class _Display extends State<BookingPage>{
   Widget getScaffold(MultiKeyMap map) {
     return
       Scaffold(
-      appBar: getAppBar(map),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-        const Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Text(
-          "Time Slots",
-          style: TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontFamily: "Lato"
-          ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Center(
-            child: SizedBox(
-              height: 500,
-              width: 500,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10)
+        appBar: getAppBar(map),
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text(
+                "Time Slots",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontFamily: "Lato"
                 ),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: getTimeSlots(map),
-                ),
-              )
+              ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Center(
+                child: SizedBox(
+                    height: 500,
+                    width: 500,
+                    child: Container(
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10)
+                      ),
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        child: getTimeSlots(map),
+                      ),
+                    )
+                ),
+              ),
+            ),
+            SizedBox(width: 350, height: 60 ,child: ElevatedButton(onPressed: (){submitBooking(context, map);}, child: Text("Submit", style: TextStyle(fontFamily: "Lato"),), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF08016e)),))
+          ],
         ),
-        SizedBox(width: 350, height: 60 ,child: ElevatedButton(onPressed: (){submitBooking(context, map);}, child: Text("Submit", style: TextStyle(fontFamily: "Lato"),), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF08016e)),))
-        ],
-      ),
-      backgroundColor: Colors.blueGrey,
-    );
+        backgroundColor: Colors.blueGrey,
+      );
   }
 
   AppBar getAppBar(MultiKeyMap map){
@@ -221,9 +227,9 @@ class _Display extends State<BookingPage>{
       actions: [getDropdown(map)],
       title: Text(roomName),
       titleTextStyle: const TextStyle(
-          color: Colors.white,
-          fontFamily: "impact",
-          fontSize: 20,
+        color: Colors.white,
+        fontFamily: "impact",
+        fontSize: 20,
       ),
     );
   }
@@ -250,7 +256,7 @@ class _Display extends State<BookingPage>{
 
   List<String> getDropDownOptions(MultiKeyMap map){
     int count = 0;
-    for(int index = isSelected!.indexOf(true); (index> -1 && index < isSelected!.length) && map.getValue(roomName,map.getTimeKey()![index])  != "Unavailable"; index++){
+    for(int index = isSelected!.indexOf(true); (index> -1 && index < isSelected!.length) && map.getValue(roomName,map.getTimeKey(map.getRoomKeys().indexOf(roomName))![index])  != "Unavailable"; index++){
       count++;
     }
     if(count >= 6 || count == 0){
@@ -259,7 +265,7 @@ class _Display extends State<BookingPage>{
       return dropDownOptions.sublist(0,count);
     }
   }
-  
+
   Widget getDropdown(MultiKeyMap map){
     var list = getDropDownOptions(map);
     if(list.contains(dropdownValue)){
@@ -374,92 +380,92 @@ class _Display extends State<BookingPage>{
     showDialog(
         context: context,
         builder: (context){
-      return SizedBox(
-        height: 200,
-        width: 300,
-        child: Dialog(
-          child: SizedBox(
-            height: 300,
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 240,
-                    child: TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Enter your First name',
+          return SizedBox(
+            height: 200,
+            width: 300,
+            child: Dialog(
+              child: SizedBox(
+                height: 300,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 240,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'Enter your First name',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your First name';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {
+                              _firstName = value;
+                            });
+                          },
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your First name';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          _firstName = value;
-                        });
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    width: 250,
-                    child: TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Enter your Last name',
+                      SizedBox(
+                        width: 250,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'Enter your Last name',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your name';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {
+                              _lastName = value;
+                            });
+                          },
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your name';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          _lastName = value;
-                        });
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    width: 250,
-                    child: TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: 'Enter your Case Id',
+                      SizedBox(
+                        width: 250,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'Enter your Case Id',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter Case Id';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {
+                              _caseId = value;
+                            });
+                          },
+                        ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter Case Id';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          _caseId = value;
-                        });
-                      },
-                    ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (_formKey.currentState!.validate()) {
+                            Navigator.pop(context);
+                            reloadData(map);
+                            print("ok");
+                          }
+                        },
+                        child: const Text('Book'),
+                      ),
+                    ],
                   ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        Navigator.pop(context);
-                        reloadData(map);
-                        print("ok");
-                      }
-                    },
-                    child: const Text('Book'),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      );
-    });
+          );
+        });
   }
 
   Future<void> reloadData(MultiKeyMap lap) async {
@@ -467,11 +473,22 @@ class _Display extends State<BookingPage>{
         context,
         MaterialPageRoute(builder: (context) => LoadingPage())
     );
-    await bookRoom(_firstName, _lastName, _caseId, "${dropdownValueIndex()}", roomName, lap.getTimeKey()![isSelected!.indexOf(true)]);
+    var message = await bookRoom(_firstName, _lastName, _caseId, "${dropdownValueIndex()}", roomName, lap.getTimeKey(lap.getRoomKeys().indexOf(roomName))![isSelected!.indexOf(true)]);
     Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => HomePage())
     );
+    // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
+      leading: Icon(Icons.book),
+      backgroundColor: Colors.blueGrey,
+      content: Text(message),
+      actions: <Widget>[
+        TextButton(
+        onPressed: () => ScaffoldMessenger.of(context).clearMaterialBanners(),
+        child: Text('DISMISS'),
+      ),
+    ],));
   }
 
 }
